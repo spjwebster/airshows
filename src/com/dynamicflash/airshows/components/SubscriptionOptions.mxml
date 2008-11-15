@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml" creationComplete="init()" verticalGap="0">
+	<mx:ControlBar width="100%">
+		<mx:Button id="doneButton" label="Done"/>
+		<mx:Spacer width="100%"/>
+		<mx:Button id="unsubscribeButton" label="Unsubscribe" enabled="{episodesGrid.selectedItem != null}"/>
+	</mx:ControlBar>
+	<mx:VBox width="100%" height="100%">
+		<mx:DataGrid dataProvider="{episodes}" id="episodesGrid" width="100%" height="100%" sortableColumns="false" selectable="true" verticalScrollPolicy="on">
+			<mx:columns>
+				<mx:DataGridColumn headerText="Season" dataField="season" width="60"/>
+				<mx:DataGridColumn headerText="Episode" dataField="episode" width="60"/>
+				<mx:DataGridColumn headerText="Published on" dataField="date"/>
+			</mx:columns>
+		</mx:DataGrid>		
+	</mx:VBox>
+	<mx:Script>
+		<![CDATA[
+			import mx.events.ListEvent;
+			import mx.collections.SortField;
+			import mx.collections.Sort;
+			import com.adobe.xml.syndication.generic.IItem;
+			import com.adobe.xml.syndication.generic.IFeed;
+			import com.adobe.xml.syndication.generic.FeedFactory;
+			import mx.collections.ArrayCollection;
+			private var show:Object;
+			private static const URI:String = "http://tvrss.net/search/index.php?show_name=%s&show_name_exact=true&mode=rss";
+			
+			private var episodeHashTable:Dictionary = new Dictionary();
+			
+			[Bindable]
+			private var episodes:ArrayCollection = new ArrayCollection();
+			
+			private function init():void {
+				this.doneButton.addEventListener( MouseEvent.CLICK, onDoneButtonClick );
+				this.unsubscribeButton.addEventListener( MouseEvent.CLICK, onUnsubscribeButtonClick );
+				this.episodesGrid.addEventListener( ListEvent.CHANGE, onEpisodesGridChange );
+				
+				var sort:Sort = new Sort();
+				sort.fields = [ new SortField( 'season', false, true ), new SortField( 'episode', false, true ) ];
+			}
+			
+			private function onDoneButtonClick( event:MouseEvent ):void {
+				this.parentApplication.currentState = "";				
+			}
+			
+			private function onUnsubscribeButtonClick( event:MouseEvent ):void {
+				this.episodesGrid.selectedItem = null;
+				this.unsubscribeButton.enabled = false;
+				this.show.subscribed = false;
+			}
+			
+			private function onEpisodesGridChange( event:ListEvent ):void {
+				var episode:Object = this.episodes.getItemAt( event.rowIndex );
+				this.show.subscribed = true;
+				this.show.lastSeason = episode.season;
+				this.show.lastEpisode = episode.episode;
+			}
+			
+			public function load( show:Object ):void {
+				this.show = show;
+				this.episodes.removeAll();
+				this.episodeHashTable = new Dictionary()
+
+				var request:URLRequest = new URLRequest( URI.replace( '%s', show.id ) );
+				var loader:URLLoader = new URLLoader();
+				
+				loader.addEventListener( Event.COMPLETE, onLoaderComplete );
+				
+				loader.load( request );
+			}
+			
+			private function onLoaderComplete( event:Event ):void {
+				var loader:URLLoader = URLLoader( event.target );
+				
+				var feed:IFeed = FeedFactory.getFeedByString( loader.data );
+				var seasonRegExp:RegExp = new RegExp( "Season: ([0-9]+)", "mi" );
+				var episodeRegExp:RegExp = new RegExp( "Episode: ([0-9]+)", "mi" );
+				
+				var dataSource:Array = new Array();
+				
+				for each ( var item:IItem in feed.items ) {
+					trace( item.excerpt.value );
+					var seasonMatches:Object = seasonRegExp.exec( item.excerpt.value );
+					var episodeMatches:Object = episodeRegExp.exec( item.excerpt.value );
+					if ( seasonMatches && episodeMatches ) {
+						var episode:Object = new Object();
+						episode.season = int( seasonMatches[ 1 ] );				
+						episode.episode = int( episodeMatches[ 1 ] );
+						episode.date = item.date;
+
+						var hash:String = episode.season + "x" + episode.episode;
+						if ( this.episodeHashTable.hasOwnProperty( hash ) === false ) {
+							this.episodeHashTable[ hash ] = episode;
+							dataSource.push( episode );
+						}
+					}
+				}
+				
+				this.episodes.source = dataSource;
+				
+				// Select current subscription item
+				if ( this.show.subscribed ) {
+					var lastEpisodeHash:String = this.show.lastSeason + "x" + this.show.lastEpisode;
+					this.episodesGrid.selectedItem = this.episodeHashTable[ lastEpisodeHash ];
+				}
+			}
+		]]>
+	</mx:Script>
+</mx:VBox>

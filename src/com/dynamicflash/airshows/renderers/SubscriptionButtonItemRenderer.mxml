@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Button xmlns:mx="http://www.adobe.com/2006/mxml" label=">" click="onButtonClick( event )">
+	<mx:Script>
+		<![CDATA[
+			import com.dynamicflash.airshows.events.SubscriptionEvent;
+			private function onButtonClick( event:MouseEvent ):void {
+				var e:SubscriptionEvent = new SubscriptionEvent( SubscriptionEvent.SUBSCRIBE, data );
+				this.dispatchEvent( e )
+			}			
+		]]>
+	</mx:Script>
+</mx:Button>
