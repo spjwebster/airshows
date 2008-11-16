@@ -63,6 +63,9 @@
 	
 	<mx:Script>
 		<![CDATA[
+			import com.adobe.growl.Notification;
+			import com.adobe.growl.Application;
+			import com.adobe.growl.GrowlService;
 			import mx.events.ListEvent;
 			import mx.controls.Button;
 			import mx.collections.SortField;
@@ -77,6 +80,8 @@
 			private var db:SQLConnection;
 			private var iniFile:INIFile;
 			
+			private var growl:GrowlService;
+			
 			private function init():void {
 				this.shows = new ArrayCollection();
 				this.shows.filterFunction = showsGridFilter;
@@ -88,8 +93,34 @@
 				
 				this.addEventListener( KeyboardEvent.KEY_UP, onKeyUp );
 				
+				growlInitService();
+				
 				loadSubscriptions();
 				loadShows();
+			}
+			
+			private function growlInitService():void {
+				var app:Application = new Application();
+				app.name = "AirShows";
+				app.iconPath = new File( new File( "app:/icon.png" ).nativePath ).url;
+				
+				var type:com.adobe.growl.NotificationType = new com.adobe.growl.NotificationType();
+				type.enabled = true;
+				type.name = "show-list-updates";
+				type.displayName = "Show list updates";
+				
+				this.growl = new GrowlService( app );
+				this.growl.connect( [ type ] );
+			}
+			
+			private function growlNotify( typeName:String, title:String, text:String ):void {
+				var notification:Notification = new Notification();
+				notification.name = typeName;
+				notification.title = title;
+				notification.text = text;
+				notification.sticky = false;
+				
+				this.growl.notify( notification );
 			}
 			
 			private function onKeyUp( event:KeyboardEvent ):void {
@@ -176,6 +207,7 @@
 			
 			// Repopulate shows data cache from tvrss.net
 			private function refreshShows():void {
+				growlNotify( "show-list-updates", "Updating show list", "Updating show list from tvrss.net" );
 				var req:URLRequest = new URLRequest( 'http://tvrss.net/shows/' );
 				var loader:URLLoader = new URLLoader();
 				loader.addEventListener( Event.COMPLETE, onShowsLoaderComplete );
@@ -223,6 +255,7 @@
 				
 				// Update grid data source
 				this.shows.source = dataSource;	
+				growlNotify( "show-list-updates", "Show list updated", "Show list successfully updated from tvrss.net" );
 			}
 			
 			private function showsGridFilter( item:Object ):Boolean {
