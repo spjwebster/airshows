@@ -13,6 +13,10 @@ Known Issues
 
 2.  There is zero error handling at the moment, and no loading indicators for either show or episode lists.
 
+3.  Experimental Growl support requires Growl 1.1.5, which is currently in development. Follow the [Growl build instructions](http://code.google.com/p/as3growl/wiki/ReleaseNotes#Growl_Development_Build_Required) on the [as3growl project site](http://code.google.com/p/as3growl). You'll also need to enable network notifications from the Growl system preferences pane.
+
+4. Still trying to work out how to get Flex Builder 3 to play nicely with Air application icons. I've currently *borrowed* the TVShows.app icon, so it's probably a good thing this isn't working at the moment.
+
 
 License
 -------
