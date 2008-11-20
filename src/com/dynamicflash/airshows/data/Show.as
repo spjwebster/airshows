@@ -13,5 +13,7 @@ package com.dynamicflash.airshows.data {
 		public function Show() {
 			this.extras = new Dictionary();
 		}
+		
+		
 	}
 }

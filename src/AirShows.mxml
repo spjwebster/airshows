@@ -63,6 +63,10 @@
 	
 	<mx:Script>
 		<![CDATA[
+			import mx.events.PropertyChangeEvent;
+			import mx.events.CollectionEventKind;
+			import mx.events.CollectionEvent;
+			import com.dynamicflash.airshows.data.Show;
 			import com.adobe.growl.Notification;
 			import com.adobe.growl.Application;
 			import com.adobe.growl.GrowlService;
@@ -144,6 +148,10 @@
 				iniFile.load( File.userDirectory.resolvePath( ".pytvshows.cfg" ) );
 			}
 			
+			private function saveSubscriptions():void {
+				iniFile.save();				
+			}
+			
 			private function getShowsGridRowColor( show:Object, color:Number ):Number {
 				return show.subscribed ? 0xA9BD63 : color;
 			}
@@ -184,6 +192,7 @@
 				var selectStatement:SQLStatement = new SQLStatement();
 				selectStatement.sqlConnection = this.db;
 				selectStatement.text = "SELECT * FROM shows;";
+				selectStatement.itemClass = Show;
 				selectStatement.execute();
 				
 				this.shows.removeAll();
@@ -198,6 +207,32 @@
 				}
 
 				this.shows.source = dataSource;
+				this.shows.addEventListener( CollectionEvent.COLLECTION_CHANGE, onShowsCollectionChange );
+			}
+			
+			private function onShowsCollectionChange( event:CollectionEvent ):void {
+				if ( event.kind === CollectionEventKind.UPDATE ) {
+					
+					for each ( var changeEvent:PropertyChangeEvent in event.items ) {
+						var show:Show = changeEvent.source as Show;
+
+						if ( show.subscribed ) {
+							this.iniFile.sections[ show.id ] = new Dictionary();
+							this.iniFile.sections[ show.id ][ 'season'] = show.lastSeason;
+							this.iniFile.sections[ show.id ][ 'episode'] = show.lastEpisode;
+							this.iniFile.sections[ show.id ][ 'title'] = show.title;
+							
+							for each ( var name:String in show.extras ) {
+								this.iniFile.sections[ show.id ][ name ] = show.extras[ name ];
+							}
+						} else {
+							delete this.iniFile.sections[ show.id ];					
+						}
+					}
+					
+					this.shows.refresh();
+					this.saveSubscriptions();
+				}
 			}
 			
 			private function onSubscriptionLoadComplete( event:Event ):void {
@@ -231,7 +266,7 @@
 				var matches:Object;
 				while( matches = showRegExp.exec( loader.data ) ) {
 					// Extract fields from regex
-					var show:Object = new Object();
+					var show:Show = new Show();
 					show.id = matches[1];
 					show.title = matches[2];
 					show.subscribed = this.iniFile.sections.hasOwnProperty( show.id );
